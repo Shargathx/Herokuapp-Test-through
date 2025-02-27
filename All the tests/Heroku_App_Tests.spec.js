@@ -226,14 +226,13 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
 
 
     test("Entry Ad Looping", async ({ page }) => {
+        test.setTimeout(15000);
 
         // This is a weird test - it behaves differently based on the commented lines.
         // Uncommenting the marked lines speeds up the test and allows loops to run.
         // ^ In debug mode (manual), the ad appears once; in automatic mode, it appears every time.
         // Commented lines ensure proper page loading, enabling the ad to show consistently (in automatic mode).
 
-        test.setTimeout(15000);
-        // Navigate to Entry Ad page
         await page.getByRole("link", { name: "Entry Ad" }).click();
 
         let attempts = 0;
@@ -394,8 +393,8 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
 
 
     test("File Download", async ({ page }) => {
-        // This test naviagates to File Download page and then downloads and also deletes the first .txt file it finds
-        // The test site is constantly changing its names and files -> to prevent a failed test, the test will download the first .txt file it finds
+        // This test naviagates to File Download page and then downloads and also deletes a file
+        // The test site is constantly changing its names and files --> to prevent a failed test, the test will download the first .txt file it finds
 
         await page.getByRole("link", { name: /^File Download$/ }).click();
 
@@ -463,7 +462,7 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
 
 
     test("Floating Menu (With Array Menu Assert)", async ({ page }) => {
-        // This test makes sure the floating menu stays visible when scrolling down, asserting all the elements of the floating menu
+        //  This test makes sure the floating menu stays visible when scrolling down, asserting all the elements of the floating menu
 
         //  await page.locator("text=Floating Menu").click();
         await page.getByRole("link", { name: "Floating Menu" }).click();
@@ -480,7 +479,6 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
         for (const item of elements) {
             await expect(item).toBeVisible();
         };
-
     });
 
 
@@ -580,7 +578,6 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
         await expect(page.locator("#flash")).toContainText("You logged out of the secure area!");
         //  await expect(page.locator("//h2[text()='Login Page']")).toHaveText("Login Page");
         await expect(page.locator("//h2[text()='Login Page']")).toBeVisible();
-
     });
 
 
@@ -656,7 +653,6 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
         else {
             console.log("Slider values are not the same, fix code!")
         }
-
     });
 
 
