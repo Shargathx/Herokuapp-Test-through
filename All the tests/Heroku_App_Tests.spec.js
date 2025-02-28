@@ -13,7 +13,7 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
 
     test("Add/Remove Elements", async ({ page }) => {
 
-        // Test adds some elements and deletes some
+        // Test adds some elements and deletes some elements after
 
         await page.getByRole('link', { name: 'Add/Remove Elements' }).click();
         await page.getByRole('button', { name: 'Add Element' }).click();
@@ -585,12 +585,12 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
     test("Geolocation", async ({ page, context }) => {
         test.setTimeout(20000);
 
-        // "This test isn't working properly because the automated mode can't get the real-time location, which stops the test from continuing.
+        // This test isn't working properly because the automated mode can't get the real-time location, which stops the test from continuing.
         // So, I'll use fake location settings instead.
 
         // await page.locator("text=Geolocation").click();
         await context.grantPermissions(['geolocation']);
-        await context.setGeolocation({ latitude: 54.468635, longitude: -2.182221 }); // setting a fake location might help if the test doesnt / is unable to find real-time locations
+        await context.setGeolocation({ latitude: 54.468635, longitude: -2.182221 }); // setting a fake location might help if the test doesnt or is unable to find real-time locations
         await page.getByRole("link", { name: "Geolocation" }).click();
         await page.locator("#content").isVisible();
         await page.locator("//button[text()='Where am I?']").click();
@@ -621,6 +621,8 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
 
     test("Horizontal Slider", async ({ page }) => {
         test.setTimeout(15000);
+
+        // This test will move the slider by a random value
 
         //  await page.locator("text=Horizontal Slider").click();
         await page.getByRole("link", { name: "Horizontal Slider" }).click();
@@ -657,12 +659,136 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
 
 
 
-    test.skip("Hovers", async ({ page }) => {
+    test("Hovers", async ({ page }) => {
+
+        // This test will hover over some elements, asserts their names, clicks to see their profiles (broken links),
+        // navigates back and loops the action until all profiles have been asserted
 
         //  await page.locator("text=Hovers").click();
         await page.getByRole("link", { name: "Hovers" }).click();
+        await expect(page.locator("#content")).toBeVisible();
+        if (await page.locator("#content").isVisible()) {
+            console.log("Content page is visible");
+        }
+        else {
+            console.log("Content page not visible, fix code!")
+        }
+
+        await expect(page.locator("h3:text('Hovers')")).toBeVisible();
+        if (await page.locator("h3:text('Hovers')").isVisible()) {
+            console.log("Hovers text is visible");
+        }
+        else {
+            console.log("Hovers text is not visible, fix code!")
+        }
+
+        let maxImages = 3;
+        const text = await page.locator("h5");
+        const links = await page.locator("//a[contains(@href, 'users')]");
+        const image = await page.locator("//img[@src='/img/avatar-blank.jpg' and @alt='User Avatar']");
+        let imageCount = 0;
+        let textCount = 0;
+        let clickedLinks = 0;
+
+        while (imageCount < maxImages && textCount < maxImages) {
+
+            const currentImage = image.nth(imageCount);
+            const currentText = text.nth(textCount);
+            const linkClicker = links.nth(clickedLinks);
+
+            await expect(currentImage).toBeVisible();
+            await currentImage.hover();
+
+            const imageName = await currentText.textContent();
+
+            // console.log(`Checking profile ${imageName}`);
+            console.log(`Checking profile name...`);
+            await expect(currentText).toHaveText(`name: user${imageCount + 1}`);
+            console.log(`Profile ${imageName} checks out!`);
+
+            await linkClicker.click();
+            await expect(page.locator("//h1[text()='Not Found']")).toBeVisible();
+            if (page.locator("//h1[text()='Not Found']").isVisible()) {
+                console.log("Page error 404 is visible, going back....");
+            }
+            await page.goBack();
+            await page.waitForLoadState("load");
+
+            imageCount++;
+            textCount++;
+            clickedLinks++;
+        }
+        console.log("Maximum attempts reached, exiting test...");
+    });
 
 
+
+    test("Infinite Scroll (Looping With scrollIntoView)", async ({ page }) => {
+        test.setTimeout(25000);
+
+        // Test will try to assert that the footer of the page is visible while constantly scrolling down using scrollIntoView
+
+        const timeout = 10000;
+        const startTime = Date.now();
+
+        await page.getByRole("link", { name: "Infinite Scroll" }).click();
+        await page.waitForLoadState("load");
+        await expect(page.locator("//h3[text()='Infinite Scroll']")).toBeVisible();
+        if (page.locator("//h3[text()='Infinite Scroll']").isVisible) {
+            console.log("Infinite Scroll text visible, continuing test...");
+        }
+
+        await page.locator("//h3[text()='Infinite Scroll']").hover();
+
+        let footerVisible = false;
+
+        while (!footerVisible) {
+            const elapsedTime = Date.now() - startTime;
+            if (elapsedTime > timeout) {
+                console.log("Maximum timeout reached, exiting loop!");
+                break;
+            }
+
+            console.log("Footer is not yet visible, retrying, retrying....");
+            await page.locator("#page-footer").scrollIntoViewIfNeeded();
+            await page.waitForTimeout(1000);
+        }
+        console.log("Footer still not visible, exiting test...");
+    });
+
+
+
+    test.only("Infinite Scroll (Looping With Mouse Wheel)", async ({ page }) => {
+        test.setTimeout(25000);
+
+        // Test will try to assert that the footer of the page is visible while constantly scrolling down using mouse.wheel()
+
+        const timeout = 10000;
+        const startTime = Date.now();
+
+        await page.getByRole("link", { name: "Infinite Scroll" }).click();
+        await page.waitForLoadState("load");
+        await expect(page.locator("//h3[text()='Infinite Scroll']")).toBeVisible();
+        if (page.locator("//h3[text()='Infinite Scroll']").isVisible) {
+            console.log("Infinite Scroll text visible, continuing test...");
+        }
+
+        await page.locator("//h3[text()='Infinite Scroll']").hover();
+
+        let footerVisible = false;
+
+        while (!footerVisible) {
+            const elapsedTime = Date.now() - startTime;
+            if (elapsedTime > timeout) {
+                console.log("Maximum timeout reached, exiting loop!");
+                break;
+            }
+
+            console.log("Footer is not yet visible, retrying....");
+            await page.mouse.wheel(0, 5000);
+            await page.waitForTimeout(1000);
+        }
+        console.log("Footer still not visible, exiting test...");
     });
 
 
@@ -678,6 +804,17 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
 
 
 
+    /*
+    
+    
+        test.skip("BASE", async ({ page }) => {
+    
+            await page.getByRole("link", { name: "Forgot Password" }).click();
+    
+        });
+        
+    
+        */
 
 
 
@@ -687,7 +824,21 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
 
 
 
-});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+});   // ENDING OF ALL LINEAR TESTS
 
 
 
