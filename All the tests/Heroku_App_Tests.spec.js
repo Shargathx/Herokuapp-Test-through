@@ -2,6 +2,7 @@
 
 import { test, expect, request } from '@playwright/test';
 import { assert } from 'console';
+import { enableCompileCache } from 'module';
 import path from 'path';
 
 test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () => {
@@ -749,7 +750,7 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
                 break;
             }
 
-            console.log("Footer is not yet visible, retrying, retrying....");
+            console.log("Footer is not yet visible, retrying....");
             await page.locator("#page-footer").scrollIntoViewIfNeeded();
             await page.waitForTimeout(1000);
         }
@@ -758,7 +759,7 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
 
 
 
-    test.only("Infinite Scroll (Looping With Mouse Wheel)", async ({ page }) => {
+    test("Infinite Scroll (Looping With Mouse Wheel)", async ({ page }) => {
         test.setTimeout(25000);
 
         // Test will try to assert that the footer of the page is visible while constantly scrolling down using mouse.wheel()
@@ -790,6 +791,159 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
         }
         console.log("Footer still not visible, exiting test...");
     });
+
+
+
+    test("Inputs", async ({ page }) => {
+        test.setTimeout(15000);
+
+        // This test will navigate to Inputs page, inserts a base value and then uses keyboard arrows to change said value to 25 and back to 0
+
+        const numberField = await page.locator("//div[@class='example']//input[@type='number']");
+        await page.getByRole("link", { name: "Inputs" }).click();
+        await expect(page.locator("#content")).toBeVisible();
+        if (await page.locator("#content")) {
+            console.log("Page content is visible, continuing test...");
+        } else {
+            console.log("Page content NOT visible, fix code!");
+        }
+
+        await numberField.fill("0");
+        const fieldValue = await numberField.inputValue();
+        if (fieldValue === "0") {
+            console.log("Base value 0 inserted.")
+        }
+
+        const interval = 50;
+        const maxValue = 25;
+
+        let currentValue = 0;
+        let increasing = true;
+
+        const startTimeIncrease = Date.now();
+
+        console.log("Increasing value...");
+        for (let currentValue = 0; currentValue < maxValue; currentValue++) {
+            await page.keyboard.down('ArrowUp');
+            await page.waitForTimeout(interval);
+
+            const inputValue = await numberField.inputValue();
+            if (parseInt(inputValue) === 25) {
+                const endTimeIncrease = Date.now();
+                const timeTakenToReach25 = endTimeIncrease - startTimeIncrease;
+                console.log(`Time taken to reach 25: ${timeTakenToReach25}ms`);
+                console.log("Reached 25...");
+                break;
+            }
+        }
+
+        const startTimeDecrease = Date.now();
+
+        console.log("Decreasing value...");
+        for (let currentValue = maxValue; currentValue > 0; currentValue--) {
+            await page.keyboard.down('ArrowDown');
+            await page.waitForTimeout(interval);
+
+            const inputValue = await numberField.inputValue();
+            if (parseInt(inputValue) === 0) {
+                const endTimeDecrease = Date.now();
+                const timeTakenToReach0 = endTimeDecrease - startTimeDecrease;
+                console.log(`Time taken to decrease to 0: ${timeTakenToReach0}ms`);
+                const totalTime = (Date.now() - startTimeIncrease);
+                console.log(`Total time: ${totalTime}ms`);
+                console.log("Reached 0, stopping test...");
+                break;
+            }
+        }
+    });
+
+
+
+    test.only("JQuery UI Menus", async ({ page }) => {
+        test.setTimeout(15000);
+
+        // The test runs through some menu items, downloads a .pdf file and navigates back to the main menu, asserting visibility and functionality along the way
+
+        await page.getByRole("link", { name: "JQuery UI Menus" }).click();
+        await expect(page.locator("#content")).toBeVisible();
+        const menu = page.locator("#menu");
+        const content = page.locator("#content")
+        await expect(menu).toBeVisible();
+        if (await menu.isVisible() && await content.isVisible()) {
+            console.log("The Menu and Content items are visible, continuing test...")
+        }
+        else {
+            console.log("Missing items, check code!");
+        }
+
+        const disabledButton = page.locator("//a[text()='Disabled']");
+        const isDisabled = await disabledButton.evaluate(el => el.closest('li').getAttribute('aria-disabled') === 'true')
+        if (isDisabled) {
+            console.log("Button is disabled, continuing...")
+        }
+        else {
+            console.log("Error with Disabled button, check code");
+        }
+
+        try {
+            await disabledButton.click({ timeout: 500 });
+            console.log("Disabled menu item was clicked! Check code!!!")
+        }
+        catch (error) {
+            console.log("Click on Disabled button failed as expected");
+        }
+
+        const enabledButton = page.locator("xpath=//a[text()='Enabled']");
+        await expect(enabledButton).toBeVisible();
+        await enabledButton.hover();
+        await page.waitForTimeout(500);
+
+
+        const downloadsOption = page.locator("xpath=//a[text()='Downloads']");
+        await expect(downloadsOption).toBeVisible();
+        await downloadsOption.hover();
+        await page.waitForTimeout(500);
+
+
+        const downloadPDF = page.locator("xpath=//a[text()='PDF']");
+        const downloadPromise = page.waitForEvent('download');
+        await downloadPDF.click();
+        const download = await downloadPromise;
+        console.log(`Download started: ${await download.suggestedFilename()} at ${await download.url()}`);
+        await page.waitForTimeout(1500);
+
+
+        await enabledButton.hover();
+        await page.waitForTimeout(500);
+        const backButton = page.locator("xpath=//a[text()='Back to JQuery UI']");
+        await backButton.hover();
+        await backButton.click();
+        await page.waitForLoadState("load");
+
+
+        const jQueryUI = page.locator("xpath=//a[text()='JQuery UI']");
+        const jQueryMenu = page.locator("xpath=//a[text()='Menu']");
+        await expect(jQueryUI).toBeVisible();
+        await expect(jQueryMenu).toBeVisible();
+        if (jQueryMenu && jQueryUI) {
+            console.log("Both menu items are visible, continuing...");
+        }
+        else {
+            console.log("Some menu items are not visible, check code!");
+        }
+
+        await page.waitForLoadState("load");
+        await jQueryMenu.click();
+        await expect(page.locator("//div[@class='example']")).toBeVisible();
+        if (await page.locator("//div[@class='example']").isVisible()) {
+            console.log("All elements of the test are visible, exiting test...");
+        }
+        else {
+            console.log("Some elements are missing, check test code");
+        }
+    });
+
+
 
 
 
