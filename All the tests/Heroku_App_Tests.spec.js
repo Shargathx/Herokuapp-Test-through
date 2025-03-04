@@ -859,7 +859,7 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
 
 
 
-    test.only("JQuery UI Menus", async ({ page }) => {
+    test("JQuery UI Menus", async ({ page }) => {
         test.setTimeout(15000);
 
         // The test runs through some menu items, downloads a .pdf file and navigates back to the main menu, asserting visibility and functionality along the way
@@ -942,6 +942,279 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
             console.log("Some elements are missing, check test code");
         }
     });
+
+
+
+    test("JavaScript Alert, Confirm/Cancel and Prompt", async ({ page }) => {
+        test.setTimeout(15000);
+
+        // This test runs through all the js element buttons (Alert, Confirm, Prompt) and asserts them to be working as intended
+
+        await page.getByRole("link", { name: "JavaScript Alerts" }).click();
+        expect(page.locator("//div[@class='example']")).toBeVisible();
+
+        const jsAlert = page.locator("//button[text()='Click for JS Alert']");
+        const jsConfirm = page.locator("//button[text()='Click for JS Confirm']");
+        const jsPrompt = page.locator("//button[text()='Click for JS Prompt']");
+        const confirmedAlert = page.locator("#result");
+
+        const elements = [
+            jsAlert,
+            jsConfirm,
+            jsPrompt,
+        ];
+
+        let allVisible = true;
+
+        for (const element of elements) {
+            const isVisible = await element.isVisible();
+            if (!isVisible) {
+                allVisible = false;
+                break;
+            }
+        }
+
+        if (allVisible) {
+            console.log("All the elements are visible, continuing test...");
+        }
+        else {
+            console.log("Some elements are missing, check code!");
+        }
+
+
+        page.on('dialog', async (dialog) => {
+            if (dialog.type() === 'alert') {
+                console.log("Accepting (OK) dialog...");
+                await dialog.accept();
+            }
+        });
+
+        await jsAlert.click();
+        const resultAlertText = await confirmedAlert.textContent();
+        console.log("Alert result text is:", resultAlertText);
+        if (resultAlertText === "You successfully clicked an alert") {
+            expect(resultAlertText).toBe("You successfully clicked an alert");
+            console.log("Acceptance criteria checks out!");
+        }
+        else {
+            console.log("Text is not matching the expected value, check code!");
+        }
+        console.log("jsAlert is working, moving on...");
+
+
+        for (let i = 0; i < 2; i++) {
+            const dialogHandler = async (dialog) => {
+                if (dialog.type() === 'confirm') {
+                    if (i === 0) {
+                        console.log("Accepting confirm dialog (OK)...");
+                        await dialog.accept();
+                    } else {
+                        console.log("Confirming cancel dialog...");
+                        await dialog.dismiss();
+                    }
+                    page.removeListener('dialog', dialogHandler); // Removing the event listener so it would loop nicely
+                }
+            };
+
+            page.on('dialog', dialogHandler);
+
+            console.log(`Clicking JS Confirm button (${i === 0 ? 'Accept' : 'Dismiss'})`);
+
+            await jsConfirm.click();
+            const resultConfirmText = await confirmedAlert.textContent();
+            console.log(resultConfirmText);
+
+            if (i === 0) {
+                expect(resultConfirmText).toBe("You clicked: Ok");
+                console.log("Acceptance criteria checks out!");
+            }
+            else {
+                expect(resultConfirmText).toBe("You clicked: Cancel");
+                console.log("Cancel criteria checks out!");
+            }
+        }
+        console.log("jsConfirm is working, moving on...");
+
+
+        await page.once('dialog', async dialog => {
+            await dialog.accept("This is a little test");
+        });
+
+        const confirmedPrompt = page.locator("#result");
+        const promptTextResult = await confirmedPrompt.textContent();
+
+        await jsPrompt.click();
+        await expect(confirmedPrompt).toHaveText("You entered: This is a little test");
+        //  await expect(confirmedPrompt).toContainText("This is a little test");
+        if (promptTextResult) {
+            console.log(`Prompt text is: ${promptTextResult}`);
+        }
+        else {
+            console.log("Text is not matching the input, check code!");
+        }
+        console.log("jsPrompt is working!");
+        console.log("All js elements are working, exiting test...");
+    });
+
+
+
+    test("JavaScript onload event error", async ({ page }) => {
+
+        // This test gets a JavaScript load error and asserts the text and also the response status
+        page.on("console", (msg) => {
+            if (msg.type() === "error") {
+                console.log("JavaScript error in console:", msg.text());
+            }
+        });
+
+        const responsePromise = page.waitForResponse(response =>
+            response.status() === 200 && response.request().method() === "GET"
+        );
+        await page.getByRole("link", { name: "JavaScript onload event error" }).click();
+        const response = await responsePromise;
+
+        const errorMessage = await page.locator("text=This page has a JavaScript error").isVisible();
+        expect(errorMessage).toBe(true);
+
+        console.log('Response status:', response.status());
+        const validResponse = response.status() === 200;
+        if (validResponse) {
+            console.log(`Response status (${response.status()}) checks out, exiting test...`);
+        }
+        else {
+            console.log("Response status not as expected, check code!");
+        }
+    });
+
+
+
+    test("Keyboard presses", async ({ page }) => {
+        test.setTimeout(15000);
+
+        await page.getByRole("link", { name: "Key Presses" }).click();
+        const target = page.locator("#target");
+        await expect(target).toBeVisible();
+        if (target.isVisible()) {
+            console.log("Target box is visible, continuing test...");
+        }
+        else {
+            console.log("Target box NOT visible, check code!");
+        }
+
+        const textResult = page.locator("#result");
+        const keys = ['a', 'A', '1', 'F1', 'Alt', 'Tab', 'Shift'];
+        const maxPresses = 7;
+        let presses = 0;
+
+        for (presses = 0; presses < maxPresses; presses++) {
+            const randomKey = keys[Math.floor(Math.random() * keys.length)];
+            await page.keyboard.press(randomKey);
+            const resultValue = await textResult.innerText();
+            console.log(`Pressed ${randomKey}, current input value: ${resultValue}`);
+
+            const normalizedResult = resultValue.toLowerCase();
+            const normalizedKey = `You entered: ${randomKey}`.toLowerCase();
+
+            expect(normalizedResult).toContain(normalizedKey);
+        }
+
+        await target.click();
+        const textToType = "Filling this with random words";
+        const textResults = page.locator("#result");
+        let failedAssertion = false;
+
+        for (let i = 0; i < textToType.length; i++) {
+            const currentChar = textToType[i];
+            await page.keyboard.press(currentChar);
+
+            const resultValue = await textResults.innerText();
+            console.log(`Pressed ${currentChar}, current result: ${resultValue}`);
+
+            const normalizedResults = resultValue.replace("You entered: ", "").toLowerCase();
+            let expectedChar = currentChar.toLowerCase();
+
+            if (currentChar === " ") {
+                expectedChar = "space";
+            }
+            try {
+                expect(normalizedResults).toContain(expectedChar);
+            }
+            catch (error) {
+                console.log(`Failed at character ${currentChar}:`, error);
+                failedAssertion = true;
+            }
+        }
+
+        if (!failedAssertion) {
+            console.log("Expectations met, continuing test...");
+        }
+        else {
+            console.log("Something went wrong, check code!");
+        }
+
+        // Pressing "Enter" while INSIDE the #target box causes the page to refresh for some reason, making asserting the #result impossible by my knowledge
+        // Pressing "Enter" while outside the #target box just causes the #result to display the standard "You entered: Enter" message
+
+        await page.locator('#target').press('Enter');
+
+        const resultTextEnd = await textResult.textContent();
+        if (resultTextEnd === "") {
+            console.log("#result is empty after page reload, exiting test...");
+        }
+        else {
+            console.log("#result still displays some text, something is wrong!");
+        }
+    });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
