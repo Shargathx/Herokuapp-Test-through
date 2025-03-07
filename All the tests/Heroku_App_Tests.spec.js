@@ -1168,6 +1168,115 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
 
 
 
+    test("Large & Deep DOM", async ({ page }) => {
+
+        // This test just checks a page with a lot of sibling, row and column elements if they are all visible and then also sums them up
+
+        await page.getByRole("link", { name: "Large & Deep DOM" }).click();
+        await expect(page.locator("#content")).toBeVisible();
+        await expect(page.locator("//h4[text()='No Siblings']")).toBeVisible();
+        await page.locator("#sibling-46\\.1").scrollIntoViewIfNeeded();
+        await expect(page.locator("#sibling-46\\.1")).toBeVisible();
+
+        if ((await page.locator("#sibling-46\\.1").count()) > 0 && await page.locator("//h4[text()='No Siblings']").isVisible()) {
+            console.log("Both elements are visible, continuing test...");
+        }
+        else {
+            console.log("One or more elements are missing, check code!");
+        }
+
+        await page.locator("#large-table").scrollIntoViewIfNeeded();
+        await expect(page.locator("#large-table")).toBeVisible();
+        await page.locator("#header-40").scrollIntoViewIfNeeded();
+        await expect(page.locator("#header-40")).toBeVisible();
+        await page.locator("//tr[contains(@class, 'row-49')]//td[@class='column-1']").scrollIntoViewIfNeeded();
+        await expect(page.locator("//tr[contains(@class, 'row-49')]//td[@class='column-1']")).toBeVisible();
+
+        if (await page.locator("#large-table").isVisible() && await page.locator("//tr[contains(@class, 'row-49')]//td[@class='column-1']").isVisible()) {
+            console.log("All deep table elements are visible, continuing test...");
+        }
+
+        else {
+            console.log("Some elements are not visible, check code!");
+        }
+
+        const siblingCount = await page.locator("[id^='sibling-']").count();
+        console.log(`The amount of sibling elements on the page is: ${siblingCount}`)
+
+        const columnCount = await page.locator("[class^='column-']").count();
+        console.log(`The amount of column elements on the page is: ${columnCount}`);
+
+        const headerCount = await page.locator("[id^='header-']").count();
+        console.log(`The amount of header elements on the page is: ${headerCount}`);
+
+        const totalElements = siblingCount + columnCount + headerCount;
+        console.log(`Total elements on the page is: ${totalElements}`)
+
+        if (totalElements === 2750) {
+            console.log("All elements accounted for, exiting test...");
+        }
+        else {
+            console.log("Total elements is not equal to 2750, check code!");
+        }
+    });
+
+
+
+    test("Multiple Windows", async ({ page }) => {
+
+        await page.getByRole("link", { name: "Multiple Windows" }).click();
+        await expect(page.locator("//h3[text()='Opening a new window']")).toBeVisible();
+        const clickHere = page.getByRole("link", { name: 'Click Here' })
+        //    await expect(page.locator("//a[href='/windows/new']")).toBeVisible();    // Another way of asserting the "Click here" link
+        await expect(clickHere).toBeVisible();
+
+        if (await page.locator("//h3[text()='Opening a new window']").isVisible && clickHere.isVisible()) {
+            console.log("Both elements are visible, continuing test...");
+        }
+        else {
+            console.log("Some elements are missing, check code!");
+        }
+
+
+        const [newTab] = await Promise.all([
+            page.waitForEvent('popup'),
+            clickHere.click()
+        ]);
+
+        await newTab.bringToFront();
+        await expect(newTab.locator("//div//h3[text()='New Window']")).toBeVisible();
+
+        const openTabs = page.context().pages();
+
+        await openTabs[0].bringToFront();      // Switches to first tab and then back to second tab
+        await openTabs[1].bringToFront();
+        console.log(`There are ${openTabs.length} open tabs`);
+
+        if (await page.locator("//div//h3[text()='New Window']").isVisible) {
+            console.log("New window is visible; closing second tab and exiting test...");
+        }
+        else {
+            console.log("New window NOT visible, check code!");
+        }
+
+        await page.close();
+    });
+
+
+
+    test.skip("Notification Messages", async ({ page }) => {
+    
+        await page.getByRole("link", { name: "Notification Messages" }).click();
+        
+
+    });
+
+
+
+
+
+
+
 
 
 
