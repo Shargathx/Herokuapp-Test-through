@@ -1264,9 +1264,80 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
 
 
 
-    test.skip("Notification Messages", async ({ page }) => {
-    
+    test("Notification Messages", async ({ page }) => {
+        test.setTimeout(25000);
+
+        // This test navigates to Notifications page, asserts the initial text and then tries to reverse it with a loop until the value changes
+
         await page.getByRole("link", { name: "Notification Messages" }).click();
+
+
+        const flashElement = page.locator("#flash");
+        const content = page.locator("#content");
+        const notificationMessage = page.locator('h3', { hasText: 'Notification Message' });
+
+        const visibleElements = [
+            { name: "flashElement", locator: flashElement },
+            { name: "content", locator: content },
+            { name: "notificationMessage", locator: notificationMessage },
+        ];
+
+        for (const { name, locator } of visibleElements) {
+            await page.waitForLoadState("load");
+            if (await locator.isVisible()) {
+                console.log(`${name} is visible, continuing... `);
+                await expect(locator).toBeVisible();
+            }
+            else {
+                console.log("Something is wrong, check code!")
+            }
+        }
+
+
+        const actionText = page.locator("xpath=//div[@id='flash' and contains(text(), 'Action')]");
+        const clickHere = page.locator("//a[@href='/notification_message' and text()='Click here']");
+        let retries = 0;
+        const maxRetries = 10;
+        let actionTextContent = await actionText.textContent();
+
+
+        const targetState = actionTextContent.includes("Action successful") ? "Action unsuccesful" : "Action successful";
+        console.log(`Initial actionText state is "${actionTextContent}", attempting to reverse it to "${targetState}"...`);
+
+        if (!actionTextContent.includes(targetState)) {
+            retries = 1;
+        }
+
+        while (retries < maxRetries) {
+            await clickHere.click();
+            actionTextContent = await actionText.textContent();
+            actionTextContent = actionTextContent.trim();
+
+            if (actionTextContent && actionTextContent.includes(targetState)) {
+                console.log(`Successfully reversed to "${targetState}", exiting loop!`);
+                break;
+            }
+            else {
+                console.log("Text has not changed, retrying...");
+            }
+            retries++;
+
+            if (retries >= maxRetries) {
+                console.log(`Max retries (${maxRetries}) reached (very unlikely...). Exiting...`);
+                break;
+            }
+        }
+        console.log(`Retries needed for successful change: ${retries}`);
+        if (!actionTextContent || (!actionTextContent.includes("Action successful") && !actionTextContent.includes("Action unsuccesful"))) {
+            console.log('ERROR: Action text is neither "Action successful" nor "Action unsuccesful", FIX CODE!');
+        }
+    });
+
+
+
+    test.only("Redirect Link", async ({ page }) => {
+    
+        await page.getByRole("link", { name: "Redirect Link" }).click();
         
 
     });
