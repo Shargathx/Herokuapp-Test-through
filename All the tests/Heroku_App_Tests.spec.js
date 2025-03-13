@@ -135,7 +135,6 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
         // The test navigates to the 'Disappearing Elements' page, asserts that all expected links are present,
         // then refreshes the page multiple times, checking if any elements disappear after each reload
 
-        // await page.locator("text=Disappearing Elements").click();
         await page.getByRole("link", { name: "Disappearing Elements" }).click();
 
         // This test has a longer timeout
@@ -1335,12 +1334,201 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
 
 
 
-    test.only("Redirect Link", async ({ page }) => {
-    
+    test("Redirect Link", async ({ page }) => {
+
         await page.getByRole("link", { name: "Redirect Link" }).click();
-        
+        await expect(page.getByRole("link", { name: "here" })).toBeVisible();
+        await page.getByRole("link", { name: "here" }).click();
+
+        const statusCode200 = page.locator("//a[@href='status_codes/200']");
+        const statusCode301 = page.locator("//a[@href='status_codes/301']");
+        const statusCode404 = page.locator("//a[@href='status_codes/404']");
+        const statusCode500 = page.locator("//a[@href='status_codes/500']");
+
+        const allStatusCodes = [
+            statusCode200,
+            statusCode301,
+            statusCode404,
+            statusCode500
+        ];
+
+        for (const statusCode of allStatusCodes) {
+            await expect(statusCode).toBeVisible();
+        }
+
+        const allVisible = await Promise.all(allStatusCodes.map(async (statusCode) => statusCode.isVisible()));
+
+        if (allVisible.every(Boolean)) {
+            console.log("All response elements are visibile, continuing...");
+        }
+        else {
+            console.log("Some elements are not visible / are missing, check code!");
+        }
+
+
+        await statusCode200.click();
+        await expect(page.locator("#content")).toBeVisible();
+        await expect(page.locator("//p[contains(text(), 'This page returned a 200 status code.')]")).toBeVisible();
+
+        if (page.locator("//p[contains(text(), 'This page returned a 200 status code.')]").isVisible()) {
+            console.log("Response code 200 checks out, continuing...");
+        }
+        else {
+            console.log("Something went wrong, check code!");
+        }
+        await page.getByRole("link", { name: "here" }).click();
+
+
+        await statusCode301.click();
+        await expect(page.locator("#content")).toBeVisible();
+        await expect(page.locator("//p[contains(text(), 'This page returned a 301 status code.')]")).toBeVisible();
+
+        if (page.locator("//p[contains(text(), 'This page returned a 301 status code.')]").isVisible()) {
+            console.log("Response code 301 checks out, continuing...");
+        }
+        else {
+            console.log("Something went wrong, check code!");
+        }
+        await page.getByRole("link", { name: "here" }).click();
+
+
+        await statusCode404.click();
+        await expect(page.locator("#content")).toBeVisible();
+        await expect(page.locator("//p[contains(text(), 'This page returned a 404 status code.')]")).toBeVisible();
+
+        if (page.locator("//p[contains(text(), 'This page returned a 404 status code.')]").isVisible()) {
+            console.log("Response code 404 checks out, continuing...");
+        }
+        else {
+            console.log("Something went wrong, check code!");
+        }
+        await page.getByRole("link", { name: "here" }).click();
+
+
+        await statusCode500.click();
+        await expect(page.locator("#content")).toBeVisible();
+        await expect(page.locator("//p[contains(text(), 'This page returned a 500 status code.')]")).toBeVisible();
+
+        if (page.locator("//p[contains(text(), 'This page returned a 500 status code.')]").isVisible()) {
+            console.log("Response code 500 checks out, continuing...");
+        }
+        else {
+            console.log("Something went wrong, check code!");
+        }
+        console.log("All response codes are working, exiting test!");
+    });
+
+
+
+    test("Redirect Link (Looping)", async ({ page }) => {
+
+        await page.getByRole("link", { name: "Redirect Link" }).click();
+        await expect(page.getByRole("link", { name: "here" })).toBeVisible();
+        await page.getByRole("link", { name: "here" }).click();
+
+        const statusCode200 = page.locator("//a[@href='status_codes/200']");
+        const statusCode301 = page.locator("//a[@href='status_codes/301']");
+        const statusCode404 = page.locator("//a[@href='status_codes/404']");
+        const statusCode500 = page.locator("//a[@href='status_codes/500']");
+
+
+        const allStatusCodes = [
+            { name: "200", locator: statusCode200 },
+            { name: "301", locator: statusCode301 },
+            { name: "404", locator: statusCode404 },
+            { name: "500", locator: statusCode500 },
+        ];
+
+        for (const statusCode of allStatusCodes) {
+            await expect(statusCode.locator).toBeVisible();
+        }
+
+        const allVisible = await Promise.all(allStatusCodes.map(async (statusCode) => statusCode.locator.isVisible()));
+
+        if (allVisible.every(Boolean)) {
+            console.log("All response elements are visibile, continuing...");
+        }
+        else {
+            console.log("Some elements are not visible / are missing, check code!");
+        }
+
+
+        for (const statusCode of allStatusCodes) {
+            await statusCode.locator.click();
+            await expect(page.locator("#content")).toBeVisible();
+            await expect(page.locator(`//p[contains(text(), 'This page returned a ${statusCode.name} status code.')]`)).toBeVisible();
+
+            if (page.locator(`//p[contains(text(), 'This page returned a ${statusCode.name} status code.')]`).isVisible()) {
+                console.log(`Response code ${statusCode.name} checks out, continuing...`);
+            }
+            else {
+                console.log("Something went wrong, check code!");
+            }
+            await page.getByRole("link", { name: "here" }).click();
+        }
+        console.log("All response codes are working, exiting test!");
+    });
+
+
+
+    test.only("Shadow DOM", async ({ page }) => {
+
+        // This test tries to capture the texts inside shadow:root
+
+        await page.getByRole("link", { name: "Shadow DOM" }).click();
+
+        await expect(page.locator("#content")).toBeVisible();
+        await expect(page.locator("//div/h1[text()='Simple template']")).toBeVisible();
+
+        if (await page.locator("#content").isVisible() && await page.locator("//div/h1[text()='Simple template']").isVisible()) {
+            console.log("Content and text visible, continuing...");
+        }
+        else {
+            console.log("Content and/or text missing, check code!");
+        }
+
+        const shadowHosts = await page.locator("my-paragraph").all();
+
+        let allListItems = [];
+
+        for (const shadowHost of shadowHosts) {
+            const shadowRoot = await shadowHost.evaluateHandle(el => el.shadowRoot);
+
+            const assignedNodes = await shadowRoot.evaluate(root => {
+                const slot = root.querySelector("slot");
+                return slot ? Array.from(slot.assignedNodes()).map(node => node.textContent.trim()) : [];
+            });
+
+            allListItems = allListItems.concat(assignedNodes);
+
+            const ul = await shadowRoot.$("ul");
+            if (ul) {
+                const listItems = await ul.evaluate(ulElement => {
+                    return Array.from(ulElement.querySelectorAll("li")).map(li => li.textContent.trim());
+                });
+                allListItems = allListItems.concat(listItems);
+            }
+        }
+
+        console.log("Extracted list items from all Shadow DOMs:", allListItems); // Debugging output
+        expect(allListItems).toContain("Let's have some different text!");
+
+        if (allListItems.includes("Let's have some different text!")) {
+            console.log("All texts found, exiting test...");
+        }
+        else {
+            console.log("Something went wrong, check code!");
+        }
+    });
+
+
+
+    test.skip("BASE", async ({ page }) => {
+    
+        await page.getByRole("link", { name: "Forgot Password" }).click();
 
     });
+
 
 
 
