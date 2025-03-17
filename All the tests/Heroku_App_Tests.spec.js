@@ -1471,7 +1471,7 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
 
 
 
-    test.only("Shadow DOM", async ({ page }) => {
+    test("Shadow DOM", async ({ page }) => {
 
         // This test tries to capture the texts inside shadow:root
 
@@ -1523,13 +1523,173 @@ test.describe.parallel("Herokuapp Complete Test-through (with beforeEach)", () =
 
 
 
-    test.skip("BASE", async ({ page }) => {
-    
-        await page.getByRole("link", { name: "Forgot Password" }).click();
+    test.only("Shifting Content", async ({ page }) => {
 
+        // This test goes through multiple links, checks the initial positions of elements,
+        // refreshes the page and then checks them again and compares it against the initial values.
+
+        const mainPage = "https://the-internet.herokuapp.com/shifting_content";
+        await page.getByRole("link", { name: "Shifting Content" }).click();
+        await expect(page.locator("#content")).toBeVisible();
+
+        const menuElement = page.getByRole("link", { name: 'Example 1: Menu Element' });
+        const imageElement = page.getByRole("link", { name: 'Example 2: An image' });
+        const listElement = page.getByRole("link", { name: 'Example 3: List' });
+
+        await expect(menuElement).toBeVisible();
+        await expect(imageElement).toBeVisible();
+        await expect(listElement).toBeVisible();
+
+        if ((menuElement && imageElement && listElement).isVisible()) {
+            console.log("All initial elements are visible, continuing test...");
+        }
+        else {
+            console.log("Some elements are missing, check code!");
+        }
+
+        await menuElement.click();
+        await expect(page.locator("#content")).toBeVisible();
+
+        await page.waitForSelector('ul li a', { state: 'visible' });
+
+        const initialBoundingBoxes = await page.evaluate(() => {
+            return Array.from(document.querySelectorAll('ul li a')).map(el => el.getBoundingClientRect());
+        });
+
+        console.log(initialBoundingBoxes);
+
+        await page.reload();
+
+        const afterBoundingBoxes = await page.evaluate(() => {
+            return Array.from(document.querySelectorAll('ul li a')).map(el => el.getBoundingClientRect());
+        });
+
+        console.log(afterBoundingBoxes);
+
+        // One of the following parts can be commented out, since they both check if boundingBox has changed, just in 2 different ways
+
+        const hasChanged = initialBoundingBoxes.some((box, index) => {
+            const afterBox = afterBoundingBoxes[index];
+            return (
+                box.top != afterBox.top ||
+                box.left != afterBox.left ||
+                box.right != afterBox.right ||
+                box.width != afterBox.width ||
+                box.height != afterBox.height
+            );
+        });
+        console.log("Bounding boxes changed:", hasChanged);
+
+
+        initialBoundingBoxes.forEach((box, index) => {
+            const afterBox = afterBoundingBoxes[index];
+
+            const changes = [];
+            if (box.top !== afterBox.top) changes.push(`top: ${box.top} → ${afterBox.top}`);
+            if (box.left !== afterBox.left) changes.push(`left: ${box.left} → ${afterBox.left}`);
+            if (box.width !== afterBox.width) changes.push(`width: ${box.width} → ${afterBox.width}`);
+            if (box.height !== afterBox.height) changes.push(`height: ${box.height} → ${afterBox.height}`);
+
+            if (changes.length > 0) {
+                console.log(`Element ${index + 1} changed:`, changes.join(", "));
+            }
+        });
+
+        console.log("Continuing test...");
+
+
+        await page.goto(mainPage);
+        await imageElement.click();
+        await expect(page.locator("#content")).toBeVisible();
+
+        await page.waitForSelector('img.shift', { state: 'visible' });
+        const initialImage = await page.evaluate(() => {
+            return Array.from(document.querySelectorAll('img.shift')).map(el => el.getBoundingClientRect());
+        });
+
+        console.log("Initial Image:", initialImage);
+        await page.reload();
+
+        const afterImage = await page.evaluate(() => {
+            return Array.from(document.querySelectorAll('img.shift')).map(el => el.getBoundingClientRect());
+        });
+        console.log("After Image:", afterImage);
+
+
+        const imageChanged = initialBoundingBoxes.some((image, index) => {
+            const after = afterImage[index];
+            return (
+                image.top != after.top ||
+                image.left != after.left ||
+                image.right != after.right ||
+                image.width != after.width ||
+                image.height != after.height
+            );
+        });
+        console.log("Image location has changed:", imageChanged);
+
+
+        initialImage.forEach((image, index) => {
+            const after = afterImage[index];
+
+            const changes = [];
+            if (image.top !== after.top) changes.push(`top: ${image.top} → ${after.top}`);
+            if (image.left !== after.left) changes.push(`left: ${image.left} → ${after.left}`);
+            if (image.width !== after.width) changes.push(`width: ${image.width} → ${after.width}`);
+            if (image.height !== after.height) changes.push(`height: ${image.height} → ${after.height}`);
+
+            if (changes.length > 0) {
+                console.log(`Image location has changed:`, changes.join(", "));
+            }
+        });
+        console.log("Continuing test...");
+
+
+        await page.goto(mainPage);
+        await listElement.click();
+        await page.waitForSelector('.row .large-6.columns.large-centered', { state: 'visible' });
+
+        const lineIndexes = [0, 1, 2, 3, 4,];
+        const initialText = await page.evaluate(() => {
+            const textElement = document.querySelector('.row .large-6.columns.large-centered');
+            if (textElement) {
+                return textElement.innerText.split('\n').filter(line => line.trim() !== '');
+            }
+            return [];
+        });
+        console.log("Initial text:", initialText);
+
+
+        await page.reload();
+
+        const afterText = await page.evaluate(() => {
+            const textElement = document.querySelector('.row .large-6.columns.large-centered');
+            if (textElement) {
+                return textElement.innerText.split('\n').filter(line => line.trim() !== '');
+            }
+            return [];
+        });
+        console.log("After text:", afterText);
+
+
+        const textChanges = [];
+
+        initialText.forEach((initialLine, index) => {
+            const afterLine = afterText[index] || 'undefined';
+            if (initialLine !== afterLine) {
+                textChanges.push(`Line ${index + 1} changed: "${initialLine}" → "${afterLine}"`);
+            }
+        });
+
+        if (textChanges.length > 0) {
+            //  console.log("Text content has changed:", textChanges.join("\n"));
+            console.log("Text content has changed:\n" + textChanges.map(line => line.trim()).join("\n")); // ^ Visually cleaner that the previous one ^
+        } else {
+            console.log("No changes in the tracked lines.");
+        }
+
+        console.log("Exiting test!");
     });
-
-
 
 
 
